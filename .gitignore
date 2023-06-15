@@ -1,0 +1,26 @@
+*.pt
+*.h5
+*.hdf5
+*.pkl
+# *.csv
+*.swp
+*.jpg
+*.log
+*.yapf
+# *.sh
+#needed for docker
+!entrypoint.sh
+!deploy.sh
+!build_and_push_ecr.sh
+
+.token
+__pycache__
+*.env
+.ipynb_checkpoints/
+.vscode
+.DS_Store
+
+# build artifacts
+dist/
+*.iml
+.idea/
