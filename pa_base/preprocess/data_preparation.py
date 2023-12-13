@@ -1,22 +1,11 @@
 # Copyright (c) 2023, ZDF.
 """
-Helper functions for content preprocessing.
+stub for backwards compatibility
 """
+import logging
 
-import pandas as pd
+logging.warning(
+    "pa_base.preprocess.data_preparation is deprecated, use pa_base.zdf.preprocess.data_preparation for ZDF-specific data preparation instead. If you're using this in tenant code, please inform ZDF."
+)
 
-
-def extract_brands_from_content(content: pd.DataFrame) -> pd.DataFrame:
-    brands: pd.DataFrame = content[content.contenttype == "brand"].copy()
-    brands.drop_duplicates(subset="brand_externalid", inplace=True)
-    # convert categorical column labels to normal index (otherwise at[] won't work)
-    brands.set_index(brands["brand_externalid"].astype(str), drop=False, inplace=True)
-    return brands
-
-
-def extract_topics_from_content(content: pd.DataFrame) -> pd.DataFrame:
-    topics: pd.DataFrame = content[content.contenttype == "topic"].copy()
-    topics.drop_duplicates(subset="externalid", inplace=True)
-    # convert categorical column labels to normal index (otherwise at[] won't work)
-    topics.set_index(topics["externalid"].astype(str), drop=False, inplace=True)
-    return topics
+from pa_base.zdf.preprocess.data_preparation import *  # noqa: E402, F401, F403

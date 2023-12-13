@@ -20,9 +20,7 @@ class MLmetrics(CloudWatchMetrics):
     This class computes ML metrics and logs them in logging, mlflow, and CloudWatch
     """
 
-    def __init__(
-        self, *, model_name: str, model_target: str = None, variant: str = None
-    ):
+    def __init__(self, *, model_name: str, model_target: str = None, variant: str = None):
         if variant is not None:
             CloudWatchMetrics.__init__(
                 self,
@@ -128,12 +126,8 @@ class MLmetrics(CloudWatchMetrics):
         Logs the number of unique users, unique items, and the number of interactions as mlflow metrics.
         """
         mlflow.log_metric(f"{dataset_name}_user_items", len(dataset), step)
-        mlflow.log_metric(
-            f"{dataset_name}_users", len(dataset["user_id"].unique()), step
-        )
-        mlflow.log_metric(
-            f"{dataset_name}_items", len(dataset["item_id"].unique()), step
-        )
+        mlflow.log_metric(f"{dataset_name}_users", len(dataset["user_id"].unique()), step)
+        mlflow.log_metric(f"{dataset_name}_items", len(dataset["item_id"].unique()), step)
 
 
 def leave_out_last_split(sequences):
@@ -143,9 +137,7 @@ def leave_out_last_split(sequences):
     return train, test
 
 
-def train_test_validation_split_by_users(
-    data, test_size=0.25, with_validation_set=True, min_views_user=-1
-):
+def train_test_validation_split_by_users(data, test_size=0.25, with_validation_set=True, min_views_user=-1):
     """
     Splits the users with a train_test_split and then splits the click data assigning the corresponding data to the users in the train or test set.
     If with_validation_set==True, a validation set will be created of the same size as the test set.
@@ -156,39 +148,30 @@ def train_test_validation_split_by_users(
     # if a validation set is required, it has the same size as the test size: first we split up the train set and then divide the rest into validation and test
     if with_validation_set:
         test_size *= 2
-    train, test = train_test_split(
-        users, test_size=test_size, random_state=42, shuffle=True
-    )
+    train, test = train_test_split(users, test_size=test_size, random_state=42, shuffle=True)
     train = data[data["user_id"].isin(train)]
     test = data[data["user_id"].isin(test)]
     # we can only use the items known to the model (available in train) when evaluating it
     test = test[test["externalid"].isin(train["externalid"])]
     if min_views_user > 1:
-        test = test[
-            test["user_id"].groupby(test["user_id"]).transform("size") >= min_views_user
-        ]
+        test = test[test["user_id"].groupby(test["user_id"]).transform("size") >= min_views_user]
 
     if with_validation_set:
         test_users = test["user_id"].unique()
-        validation_user_ids, test_user_ids = train_test_split(
-            test_users, test_size=0.5, random_state=42, shuffle=True
-        )
+        validation_user_ids, test_user_ids = train_test_split(test_users, test_size=0.5, random_state=42, shuffle=True)
         validation = test[test["user_id"].isin(validation_user_ids)]
         validation = validation.sort_values("datetime_local", ascending=True)
         test = test[test["user_id"].isin(test_user_ids)]
 
         validation = validation[
-            validation["user_id"].groupby(validation["user_id"]).transform("size")
-            >= min_views_user
+            validation["user_id"].groupby(validation["user_id"]).transform("size") >= min_views_user
         ]
 
     train = train.sort_values("datetime_local", ascending=True)
     test = test.sort_values("datetime_local", ascending=True)
 
     if with_validation_set:
-        logging.info(
-            f"Splitting data by users: {1-test_size} : {test_size/2} : {test_size/2}"
-        )
+        logging.info(f"Splitting data by users: {1-test_size} : {test_size/2} : {test_size/2}")
         logging.info(
             f"Train size : {train.shape[0]}. Test size : {test.shape[0]}. Validation size: {validation.shape[0]}. Num users train: {len(train['user_id'].unique())}, test: {len(test['user_id'].unique())}, validation: {len(validation['user_id'].unique())}. Num items train: {len(train['item_id'].unique())}, test: {len(test['item_id'].unique())}, validation: {len(validation['item_id'].unique())}."
         )
@@ -201,9 +184,7 @@ def train_test_validation_split_by_users(
         return train, test, None
 
 
-def train_test_validation_split_by_time(
-    data, test_size=0.25, with_validation_set=True, min_views_user=-1
-):
+def train_test_validation_split_by_time(data, test_size=0.25, with_validation_set=True, min_views_user=-1):
     """Splits data into train and test sets, by splitting the sorted data at a certain point depending on the desired test set size."""
 
     if with_validation_set:
@@ -223,39 +204,28 @@ def train_test_validation_split_by_time(
         test = test[split_index:]
 
     if min_views_user > 1:
-        train = train[
-            train["user_id"].groupby(train["user_id"]).transform("size")
-            >= min_views_user
-        ]
+        train = train[train["user_id"].groupby(train["user_id"]).transform("size") >= min_views_user]
 
-        test = test[
-            test["user_id"].groupby(test["user_id"]).transform("size") >= min_views_user
-        ]
+        test = test[test["user_id"].groupby(test["user_id"]).transform("size") >= min_views_user]
 
         if with_validation_set:
             validation = validation[
-                validation["user_id"].groupby(validation["user_id"]).transform("size")
-                >= min_views_user
+                validation["user_id"].groupby(validation["user_id"]).transform("size") >= min_views_user
             ]
 
     # we can only use the items known to the model (available in train) when evaluating it
     test = test[test["externalid"].isin(train["externalid"])]
     if min_views_user > 1:
-        test = test[
-            test["user_id"].groupby(test["user_id"]).transform("size") >= min_views_user
-        ]
+        test = test[test["user_id"].groupby(test["user_id"]).transform("size") >= min_views_user]
 
     if with_validation_set:
         # we can only use the items known to the model (available in train) when evaluating it
         validation = validation[validation["externalid"].isin(validation["externalid"])]
         if min_views_user > 1:
             validation = validation[
-                validation["user_id"].groupby(validation["user_id"]).transform("size")
-                >= min_views_user
+                validation["user_id"].groupby(validation["user_id"]).transform("size") >= min_views_user
             ]
-        logging.info(
-            f"Splitting data by time: {1-test_size} : {test_size/2} : {test_size/2}"
-        )
+        logging.info(f"Splitting data by time: {1-test_size} : {test_size/2} : {test_size/2}")
         logging.info(
             f"Train size : {train.shape[0]}. Test size : {test.shape[0]}. Validation size: {validation.shape[0]}. Num users train: {len(train['user_id'].unique())}, test: {len(test['user_id'].unique())}, validation: {len(validation['user_id'].unique())}. Num items train: {len(train['item_id'].unique())}, test: {len(test['item_id'].unique())}, validation: {len(validation['item_id'].unique())}."
         )
@@ -287,10 +257,7 @@ def k_fold_split_by_users(data, k=5, min_views_user=-1):
         # we can only use the items known to the model (available in train) when evaluating it
         test = test[test["externalid"].isin(train["externalid"])]
         if min_views_user > 1:
-            test = test[
-                test["user_id"].groupby(test["user_id"]).transform("size")
-                >= min_views_user
-            ]
+            test = test[test["user_id"].groupby(test["user_id"]).transform("size") >= min_views_user]
 
         logging.info(
             f"Train size : {train.shape[0]}. Test size : {test.shape[0]}. Num users train: {len(train['user_id'].unique())}, test: {len(test['user_id'].unique())}.  Num items train: {len(train['item_id'].unique())}, test: {len(test['item_id'].unique())}."

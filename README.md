@@ -1,7 +1,7 @@
 # P/A base
 This repository contains models, logic and abstractions for P/A components.
 
-:warning: There are also some models in this repository which are currently under development/evaluation.
+There are also some models in this repository which are currently under development/evaluation.
 ***
 
 ## Installation of pa-base in dependent projects

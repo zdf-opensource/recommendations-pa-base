@@ -41,18 +41,23 @@ CONTENTPOOL_INPUT_BUCKET_NAME = f"{_S3_BASENAME}.contentpool.input.{SITE}"
 
 # bucket & prefixes of content sync in S3
 CONTENT_SYNC_BUCKET_NAME = f"{_S3_BASENAME}.content.sophora.{SITE}"
+# TODO PERAUT-1613 remove old sync prefixes CONTENT_SYNC_PREFIX and CONTENT_SYNC_BRANDS_PREFIX
 CONTENT_SYNC_PREFIX = f"sophora_content_{SITE}_latest"
 CONTENT_SYNC_BRANDS_PREFIX = f"sophora_brands_{SITE}_latest"
 CONTENT_SYNC_CAPTIONS_PREFIX = f"captions_{SITE}_latest"
+CONTENT_SYNC_DUMP_PREFIX = f"contentdump_{SITE}.parquet.gz"
+
+# bucket & prefixes of teravolt content sync in S3
+TERAVOLT_SYNC_BUCKET_NAME = f"{_S3_BASENAME}.content.sophora.{SITE}"
+TERAVOLT_SYNC_DUMP_PREFIX = f"teravolt_model_training_dump_{SITE}.parquet.gz"
 
 # buckets for preprocessed etl output
+# TODO PERAUT-1613 remove old bucket names S3_PREPROCESSED_METADATA[_TEST|_MIG]
 S3_PREPROCESSED_METADATA = f"{_S3_BASENAME}.content.preprocessed.metadata.{SITE}"
 S3_PREPROCESSED_METADATA_TEST = f"{_S3_BASENAME}.content.preprocessed.metadata.test"
 S3_PREPROCESSED_METADATA_MIG = f"{_S3_BASENAME}.content.preprocessed.metadata.mig"
 S3_PREPROCESSED_SEQUENCES = f"{_S3_BASENAME}.content.preprocessed.sequences.{SITE}"
-S3_PREPROCESSED_INTERACTIONS = (
-    f"{_S3_BASENAME}.content.preprocessed.interactions.{SITE}"
-)
+S3_PREPROCESSED_INTERACTIONS = f"{_S3_BASENAME}.content.preprocessed.interactions.{SITE}"
 
 # buckets for models
 # content-based
@@ -109,6 +114,13 @@ if not REDISMODEL_HOST:
 if not REDISMODEL_PORT:
     REDISMODEL_PORT = DEFAULT_REDISMODEL_PORT
 
+
+# run without cache, e.g., in local dev environments
+WITHOUT_REDIS_CACHE = os.environ.get("WITHOUT_REDIS_CACHE", "").lower() == "true"
+# run without modelRedis, e.g., in local dev environments
+WITHOUT_REDIS_MODELS = os.environ.get("WITHOUT_REDIS_MODELS", "").lower() == "true"
+
+
 # Loglevel
 LOGLEVEL = os.environ.get("LOGLEVEL", "INFO")
 # custom loglevel even below debug
@@ -119,18 +131,12 @@ LOGFORMAT = os.environ.get("LOGFORMAT", "json")
 # Docker test
 DOCKER_MODE = os.environ.get("DOCKER_MODE", False)  # switch PROD/TEST off=False
 
-# for development: APIv2 feature switch (only used when run with python, productive services use gunicorn)
-USE_FASTAPI = os.getenv("USE_FASTAPI", "true").lower() == "true"
-
 # App Version
 VERSION = os.environ.get("IDENTIFIER", "")
 
 # Syslog Target
 SYSLOG_HOST = os.environ.get("SYSLOG_HOST", "")
 SYSLOG_PORT = os.environ.get("SYSLOG_PORT", "")
-
-# NF API key
-NF_API_KEY = os.environ.get("NF_API_KEY")
 
 # Pinecone API KEY
 PINECONE_API_KEY: str = os.environ.get("PINECONE_API_KEY")

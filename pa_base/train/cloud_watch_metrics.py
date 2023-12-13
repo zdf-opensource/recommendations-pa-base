@@ -4,7 +4,7 @@ Put metrics into CloudWatch.
 """
 
 import logging
-from typing import Union
+import typing as t
 
 import boto3
 
@@ -21,7 +21,7 @@ class CloudWatchMetrics:
         self,
         *,
         model_name: str,
-        model_target: str = None,
+        model_target: t.Optional[str] = None,
         custom_namespace=None,
         enabled: bool = True,
     ):
@@ -47,9 +47,7 @@ class CloudWatchMetrics:
         # read-only property
         return self._enabled
 
-    def _log_metric(
-        self, *, metric_name: str, value: Union[int, float], unit: str = "None"
-    ):
+    def _log_metric(self, *, metric_name: str, value: t.Union[int, float], unit: str = "None"):
         if not self.enabled:
             return
         try:
@@ -94,6 +92,9 @@ class CloudWatchMetrics:
                 f"for model '{self.model_name}' with target '{self.model_target}'.",
                 exc_info=exc,
             )
+
+    def log_metric(self, *, metric_name: str, value: t.Union[int, float], unit: str = "None"):
+        self._log_metric(metric_name=metric_name, value=value, unit=unit)
 
     def sample_count(self, value):
         self._log_metric(metric_name="Samples", value=value)

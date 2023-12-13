@@ -33,9 +33,7 @@ class PredictMixin(ABC):
         :param kwargs: model-specific params
         :return iterable of (externalid, score) tuples
         """
-        raise NotImplementedError(
-            "Subclasses should overwrite this if it fits their use case"
-        )
+        raise NotImplementedError("Subclasses should overwrite this if it fits their use case")
 
 
 class SimilarItemsMixin(ABC):
@@ -58,18 +56,14 @@ class SimilarItemsMixin(ABC):
         :param kwargs: model-specific params
         :return iterable of (externalid, score) tuples
         """
-        raise NotImplementedError(
-            "Subclasses should overwrite this if it fits their use case"
-        )
+        raise NotImplementedError("Subclasses should overwrite this if it fits their use case")
 
 
 class KnowsItemMixin(ABC):
     @abstractmethod
     def knows_item(self, externalid: str):
         """check whether this model 'knows' an item"""
-        raise NotImplementedError(
-            "Subclasses should overwrite this if it fits their use case"
-        )
+        raise NotImplementedError("Subclasses should overwrite this if it fits their use case")
 
 
 class BaseModel(KnowsItemMixin):
@@ -85,13 +79,9 @@ class BaseModel(KnowsItemMixin):
         description: A string providing a description of the model generation.
     """
 
-    def __init__(
-        self, s3_bucket, meta_suffix="meta.pkl", model_suffix=".pkl", tmpdir="/tmp"
-    ):
+    def __init__(self, s3_bucket, meta_suffix="meta.pkl", model_suffix=".pkl", tmpdir="/tmp"):
         """load model from model_source and initialize"""
-        logging.info(
-            f"Trying to load model '{model_suffix}' / meta '{meta_suffix}' from bucket '{s3_bucket}'."
-        )
+        logging.info(f"Trying to load model '{model_suffix}' / meta '{meta_suffix}' from bucket '{s3_bucket}'.")
         if not s3_bucket:
             err = f"{model_suffix}: Init failed. No model S3 source given: 's3_bucket={s3_bucket}'."
             logging.error(err)

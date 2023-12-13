@@ -51,9 +51,7 @@ def s3_upload_file(
             f"S3 upload of '{filepath}' as '{s3_key_prefix}' to '{s3_bucket}' failed.",
             exc_info=exc,
         )
-    logging.info(
-        f"S3 upload of '{filepath}' as '{s3_key_prefix}' to '{s3_bucket}' finished."
-    )
+    logging.info(f"S3 upload of '{filepath}' as '{s3_key_prefix}' to '{s3_bucket}' finished.")
 
 
 # class CustomTemporaryFile(SpooledTemporaryFile):
@@ -108,9 +106,7 @@ def latest_s3_object(
         s3_client = s3_session.client("s3")
     # find latest matching file in bucket
     logging.debug(f"Using S3 input bucket {s3_bucket}")
-    items = s3_client.list_objects_v2(Bucket=s3_bucket, Prefix=s3_key_prefix).get(
-        "Contents"
-    )
+    items = s3_client.list_objects_v2(Bucket=s3_bucket, Prefix=s3_key_prefix).get("Contents")
     if not items:
         msg = f"No files for key '{s3_key_prefix}' in '{s3_bucket}'"
         logging.error(msg)
@@ -121,20 +117,14 @@ def latest_s3_object(
     for filetype in filetypes:
         filetype = filetype.lstrip(".")
         fileext = ".".join(s for s in [s3_key_suffix, filetype] if s)
-        files = [
-            item
-            for item in items
-            if item["Key"].startswith(s3_key_prefix) and item["Key"].endswith(fileext)
-        ]
+        files = [item for item in items if item["Key"].startswith(s3_key_prefix) and item["Key"].endswith(fileext)]
         if files:
             break
     else:
         msg = f"No files for key '{s3_key_prefix}' and filetypes '{filetypes}' in '{s3_bucket}'"
         logging.error(msg)
         raise FileNotFoundError(msg)
-    files = sorted(
-        files, key=lambda obj: int(obj["LastModified"].strftime("%s")), reverse=True
-    )
+    files = sorted(files, key=lambda obj: int(obj["LastModified"].strftime("%s")), reverse=True)
     latest_file = files[0]
     logging.info(f"Latest file in '{s3_bucket}' is '{latest_file['Key']}'")
     return latest_file, filetype
@@ -259,9 +249,7 @@ def s3_file(
         filetype = splits[-1] if len(splits) > 1 else filetypes[0]
     # download latest cf dump
     # store downloaded files in memory if <= 20 kB
-    with CustomTemporaryFile(
-        s3_key=latest_file, filetype=filetype, dir=output_dir  # , max_size=20 * 1024
-    ) as file:
+    with CustomTemporaryFile(s3_key=latest_file, filetype=filetype, dir=output_dir) as file:  # , max_size=20 * 1024
         try:
             s3_client.download_fileobj(s3_bucket, latest_file, file)
         except Exception as err:
@@ -349,7 +337,7 @@ def download_dataframe_from_s3(
         s3_bucket=s3_bucket,
         s3_key_prefix=s3_key_prefix,
         s3_key_suffix=s3_key_suffix,
-        filetypes=["json.gz", "csv"],
+        filetypes=["json.gz", "csv", "parquet", "parquet.gz"],
         output_dir=output_dir,
     ) as file:
         filetype = file.filetype
@@ -364,18 +352,6 @@ def download_dataframe_from_s3(
                     map(lambda line: json.loads(line), input_json),
                     columns=usecols,
                 )
-                df = transform_df(df, filetype)
-                # parse dates and convert to utc naive
-                if isinstance(datecols, list) and len(datecols):
-                    df[datecols] = df[datecols].apply(
-                        lambda x: pd.to_datetime(
-                            x,
-                            utc=True,
-                            infer_datetime_format=True,
-                            format=date_format,
-                            errors="coerce",
-                        ).dt.tz_localize(None)
-                    )
         elif filetype == "csv" or filetype == "csv.gz":
             df = pd.read_csv(
                 file,
@@ -391,9 +367,33 @@ def download_dataframe_from_s3(
                     errors="coerce",
                 ).tz_localize(None),
             )
-            df = transform_df(df, filetype)
+        elif filetype == "parquet":
+            df = pd.read_parquet(
+                file,
+                columns=usecols,
+            )
+        elif filetype == "parquet.gz":
+            with gzip.open(file, "rb") as gzfile:
+                df = pd.read_parquet(
+                    gzfile,
+                    columns=usecols,
+                )
         else:
             raise ValueError(f"Cannot load filetype '{filetype}'.")
+    df = transform_df(df, filetype)
+    if filetype in {"json.gz", "parquet", "parquet.gz"}:
+        # parse dates and convert to utc naive
+        # only needed for json.gz, because pd.read_csv already does this at parsing time and parquet has date format built in
+        if isinstance(datecols, list) and len(datecols):
+            df[datecols] = df[datecols].apply(
+                lambda x: pd.to_datetime(
+                    x,
+                    utc=True,
+                    infer_datetime_format=True,
+                    format=date_format,
+                    errors="coerce",
+                ).dt.tz_localize(None)
+            )
     logging.info(f"Raw row count in dataframe: {len(df)}")
 
     with suppress(Exception):

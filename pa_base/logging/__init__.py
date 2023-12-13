@@ -1,4 +1,7 @@
 # Copyright (c) 2022, ZDF.
+"""
+A helper to reconfigure logging for plain or structured logging.
+"""
 import enum
 import logging
 from logging.config import dictConfig
@@ -43,17 +46,13 @@ def reconfigure_logging(
         try:
             loglevel: int = levels[loglevel.upper()]
         except KeyError:
-            errors.append(
-                f"Unknown loglevel {loglevel}, falling back to 'logging.INFO'."
-            )
+            errors.append(f"Unknown loglevel {loglevel}, falling back to 'logging.INFO'.")
             loglevel: int = logging.INFO
     if not isinstance(logformat, LogFormat):
         try:
             logformat: LogFormat = LogFormat(logformat.lower())
         except ValueError:
-            errors.append(
-                f"Unknown logformat {logformat}, falling back to 'LogFormat.NONE'."
-            )
+            errors.append(f"Unknown logformat {logformat}, falling back to 'LogFormat.NONE'.")
             logformat: LogFormat = LogFormat.NONE
     dictConfig(
         {
@@ -67,10 +66,7 @@ def reconfigure_logging(
                         if logformat == LogFormat.JSON
                         else "logging.Formatter"
                     ),
-                    "format": (
-                        "[%(asctime)s] %(levelname)s PID %(process)d"
-                        " in %(module)s: %(message)s"
-                    ),
+                    "format": ("[%(asctime)s] %(levelname)s PID %(process)d" " in %(module)s: %(message)s"),
                 },
             },
             "handlers": {
