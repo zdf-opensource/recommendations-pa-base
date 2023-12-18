@@ -8,7 +8,7 @@ from itertools import tee
 
 import pytest
 
-from pa_base.util import combine_decayed, decay_func
+from pa_base.models.util import combine_decayed, decay_func
 
 
 def pairwise(iterable):

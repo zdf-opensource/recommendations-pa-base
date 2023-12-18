@@ -2,7 +2,6 @@
 """
 Util functions for recommendation models.
 """
-import logging
 from collections import defaultdict
 from operator import itemgetter
 from typing import Iterable, List, Mapping, Tuple
@@ -47,21 +46,15 @@ def get_model_target(*args, **kwargs):
     """
     stub for backwards compatibility
     """
-    logging.warning(
-        "pa_base.models.util.get_model_target is deprecated, use pa_base.zdf.models.util.get_model_target for ZDF-specific utils instead. If you're using this in tenant code, please inform ZDF."
+    raise RuntimeError(
+        "pa_base.models.util.get_model_target has been removed, use pa_base.zdf.models.util.get_model_target for ZDF-specific utils instead. If you're using this in tenant code, please inform ZDF."
     )
-    from pa_base.zdf.models.util import get_model_target as zdf_get_model_target
-
-    return zdf_get_model_target(*args, **kwargs)
 
 
 def SPECIAL_UA():
     """
     stub for backwards compatibility
     """
-    logging.warning(
-        "pa_base.models.util.SPECIAL_UA is deprecated, use pa_base.zdf.models.util.SPECIAL_UA for ZDF-specific utils instead. If you're using this in tenant code, please inform ZDF."
+    raise RuntimeError(
+        "pa_base.models.util.SPECIAL_UA has been removed, use pa_base.zdf.models.util.SPECIAL_UA for ZDF-specific utils instead. If you're using this in tenant code, please inform ZDF."
     )
-    from pa_base.zdf.models.util import SPECIAL_UA as ZDF_SPECIAL_UA
-
-    return ZDF_SPECIAL_UA

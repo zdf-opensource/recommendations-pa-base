@@ -86,6 +86,11 @@ class PineconeBaseModel(SimilarItemsMixin, KnowsItemMixin):
     def knows_item(self, externalid: str):
         # fetch with retries and a fresh index each time
         max_retries = 2
+        item = self.fetch_item(externalid, max_retries=max_retries)
+        return len(item.vectors) > 0 if item is not None else False
+
+    def fetch_item(self, externalid: str, max_retries: int = 2):
+        # fetch item with retries and a fresh index each time
         for i in range(1, max_retries + 1):
             context = (
                 tracer.subsegment_context(f"pinecone-fetch-try-{i}") if tracer is not None else contextlib.nullcontext()
@@ -101,17 +106,13 @@ class PineconeBaseModel(SimilarItemsMixin, KnowsItemMixin):
                     fetch_args["namespace"] = self._namespace
                 try:
                     with pinecone.Index(self._index_name, pool_threads=1) as index:
-                        result = index.fetch(**fetch_args)  # .vectors[externalid].values
-                        # return true if the item exists
-                        # return externalid in result.vectors
-                        return len(result.vectors) > 0
+                        result = index.fetch(**fetch_args)
+                        return result
                 except Exception as exc:
                     logging.warning(
                         f"Error during pinecone fetch -> retry count {i} / {max_retries}",
                         exc_info=exc,
                     )
-        # successful return is already done in the retry loop above, thus we only return False here
-        return False
 
     def _get_pinecone_top_k(
         self,

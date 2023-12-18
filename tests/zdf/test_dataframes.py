@@ -7,7 +7,7 @@ tests for pa_base.data.dataframes module
 import pandas as pd
 import pytest
 
-from pa_base.data import dataframes as dfs
+from pa_base.zdf.data import dataframes as dfs
 
 
 def test_content_df():
