@@ -1,4 +1,4 @@
-# Copyright (c) 2023, ZDF.
+# Copyright (c) 2024, ZDF.
 """
 This module defines dataclasses which represent recommendations, recommendation lists, clusters and cluster lists.
 """

@@ -1,4 +1,4 @@
-# Copyright (c) 2023, ZDF.
+# Copyright (c) 2024, ZDF.
 """
 Module containing pre-defined user segments and functionality to segment users based on history.
 

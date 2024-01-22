@@ -1,4 +1,4 @@
-# Copyright (c) 2023, ZDF.
+# Copyright (c) 2024, ZDF.
 """
 Trie implementation for efficient prefix matching, e.g., for path prefix matching during filtering of allowed items.
 """

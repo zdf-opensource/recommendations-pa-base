@@ -1,4 +1,4 @@
-# Copyright (c) 2023, ZDF.
+# Copyright (c) 2024, ZDF.
 """
 Functions to conveniently load dataframes.
 """

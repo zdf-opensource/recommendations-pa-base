@@ -1,4 +1,4 @@
-# Copyright (c) 2023, ZDF.
+# Copyright (c) 2024, ZDF.
 """
 Static configuration and evironment variables.
 """
@@ -47,9 +47,9 @@ CONTENT_SYNC_BRANDS_PREFIX = f"sophora_brands_{SITE}_latest"
 CONTENT_SYNC_CAPTIONS_PREFIX = f"captions_{SITE}_latest"
 CONTENT_SYNC_DUMP_PREFIX = f"contentdump_{SITE}.parquet.gz"
 
-# bucket & prefixes of teravolt content sync in S3
-TERAVOLT_SYNC_BUCKET_NAME = f"{_S3_BASENAME}.content.sophora.{SITE}"
-TERAVOLT_SYNC_DUMP_PREFIX = f"teravolt_model_training_dump_{SITE}.parquet.gz"
+# bucket & prefixes of descriptive metadata from content sync in S3
+DESCRIPTIVE_METADATA_SYNC_BUCKET_NAME = f"{_S3_BASENAME}.content.sophora.{SITE}"
+DESCRIPTIVE_METADATA_SYNC_DUMP_PREFIX = f"teravolt_model_training_dump_{SITE}.parquet.gz"
 
 # buckets for preprocessed etl output
 # TODO PERAUT-1613 remove old bucket names S3_PREPROCESSED_METADATA[_TEST|_MIG]

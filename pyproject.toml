@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "pa_base"
-version = "1.0.0"
-description = "Base models, logic, and, abstractions for P/A components. (c) ZDF, 2023. All rights reserved."
+version = "1.2.2"
+description = "Base models, logic, and, abstractions for P/A components. (c) ZDF, 2024. All rights reserved."
 license = "MIT" # c.f., https://python-poetry.org/docs/pyproject/#license
 authors = [
     # find authors of current lines using "git-extras": git summary --line

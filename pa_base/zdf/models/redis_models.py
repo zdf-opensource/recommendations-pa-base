@@ -1,4 +1,4 @@
-# Copyright (c) 2023, ZDF.
+# Copyright (c) 2024, ZDF.
 """
 This module encapsulates redis accesses for storing and retrieving pre-calculated model scores in/from redis.
 """

@@ -1,4 +1,4 @@
-# Copyright (c) 2023, ZDF.
+# Copyright (c) 2024, ZDF.
 """
 Cross-validation functions and ML evaluation metrics to be used during model evaluation.
 """
@@ -233,7 +233,7 @@ def train_test_validation_split_by_time(data, test_size=0.25, with_validation_se
     else:
         logging.info(f"Splitting data by time: {1-test_size} : {test_size}")
         logging.info(
-            f"Train size : {train.shape[0]}. Test size : {test.shape[0]}. Num users train: {len(train['user_id'].unique())}, test: {len(test['user_id'].unique())}. Num items train: {len(train['item_id'].unique())}, test: {len(test['item_id'].unique())}, validation: {len(validation['item_id'].unique())}."
+            f"Train size : {train.shape[0]}. Test size : {test.shape[0]}. Num users train: {len(train['user_id'].unique())}, test: {len(test['user_id'].unique())}. Num items train: {len(train['item_id'].unique())}, test: {len(test['item_id'].unique())}."
         )
         return train, test, None
 

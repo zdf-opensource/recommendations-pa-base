@@ -1,4 +1,4 @@
-# Copyright (c) 2023, ZDF.
+# Copyright (c) 2024, ZDF.
 """
 ZDF-specific dataframes.
 """
@@ -19,9 +19,9 @@ from pa_base.configuration.config import (
     CONTENT_SYNC_CAPTIONS_PREFIX,
     CONTENT_SYNC_DUMP_PREFIX,
     CONTENTPOOL_INPUT_BUCKET_NAME,
+    DESCRIPTIVE_METADATA_SYNC_BUCKET_NAME,
+    DESCRIPTIVE_METADATA_SYNC_DUMP_PREFIX,
     S3_PREPROCESSED_INTERACTIONS,
-    TERAVOLT_SYNC_BUCKET_NAME,
-    TERAVOLT_SYNC_DUMP_PREFIX,
     TZ,
 )
 from pa_base.data.s3_util import (
@@ -42,16 +42,20 @@ from pa_base.zdf.models.util import get_model_target
 
 try:
     from pa_base.zdf.configuration.dynamic_configs import (
+        DESCRIPTIVE_METADATA_COLUMNS,
+        DESCRIPTIVE_METADATA_DICT_COLUMNS,
         PLAY_COVERAGE_THRESHOLD,
         PLAY_MAX_AGE_DAYS,
     )
 except ImportError as exc:
     logging.error(
-        "Could not import dynamic_configs, setting PLAY_COVERAGE_THRESHOLD=0 and PLAY_MAX_AGE_DAYS=0.",
+        "Could not import dynamic_configs, setting 'empty defaults' for PLAY_COVERAGE_THRESHOLD, PLAY_MAX_AGE_DAYS, DESCRIPTIVE_METADATA_COLUMNS, and, DESCRIPTIVE_METADATA_DICT_COLUMNS.",
         exc_info=exc,
     )
     PLAY_COVERAGE_THRESHOLD = 0
     PLAY_MAX_AGE_DAYS = 0
+    DESCRIPTIVE_METADATA_COLUMNS = []
+    DESCRIPTIVE_METADATA_DICT_COLUMNS = []
 
 
 def get_denoised_data(
@@ -315,46 +319,22 @@ def get_content_df(
     return df
 
 
-def get_teravolt_metadata_df(
-    s3_bucket: str = TERAVOLT_SYNC_BUCKET_NAME, s3_key: str = TERAVOLT_SYNC_DUMP_PREFIX
+def get_descriptive_metadata_df(
+    *,
+    s3_bucket: str = DESCRIPTIVE_METADATA_SYNC_BUCKET_NAME,
+    s3_key: str = DESCRIPTIVE_METADATA_SYNC_DUMP_PREFIX,
+    usecols: t.List[str] = DESCRIPTIVE_METADATA_COLUMNS,
+    dictcols: t.List[str] = DESCRIPTIVE_METADATA_DICT_COLUMNS,
 ) -> pd.DataFrame:
-    """Download latest teravolt metadata content dump.
+    """Download latest descriptive metadata content dump.
 
-    :param s3_bucket: The S3 bucket where the teravolt metadata content is located.
-    :param s3_key: The filename (key) of the teravolt metadata content in the `s3_bucket`.
-    :returns: A dataframe that contains the teravolt metadata content.
+    :param s3_bucket: The S3 bucket where the descriptive metadata content is located.
+    :param s3_key: The filename (key) of the descriptive metadata content in the `s3_bucket`.
+    :returns: A dataframe that contains the descriptive metadata content.
     """
-    logging.info(f"Loading teravolt metadata from S3 '{s3_bucket}:{s3_key}'.")
+    logging.info(f"Loading descriptive metadata from S3 '{s3_bucket}:{s3_key}'.")
 
-    use_cols = [
-        "externalId",
-        "title",
-        "episodeNumberTotal",
-        "episodeNumberTeravolt",
-        "staffelNummer",
-        "narrativeType",
-        "mainGenre",
-        "subGenre",
-        "fictionNonFiction",
-        "dokumentType",
-        "monoMultiTopic",
-        "collectionType",
-        "pubForm",
-        "subPubform",
-        "mainSehdim",
-        "mainMood",
-        "subSehdim1",
-        "subMood1",
-        "subSehdim2",
-        "subMood2",
-        "about",
-        "formatFamilie",
-        "parent",
-        "releaseDate",
-        "reihenTitel",
-        "fremdsprAudio",
-    ]
-    df = download_dataframe_from_s3(s3_bucket=s3_bucket, s3_key_prefix=s3_key, usecols=use_cols)
+    df = download_dataframe_from_s3(s3_bucket=s3_bucket, s3_key_prefix=s3_key, usecols=usecols)
 
     # TODO [CM]: Move this to utility file?
     def str_to_dict(item):
@@ -363,7 +343,7 @@ def get_teravolt_metadata_df(
         return item if pd.isna(item) else json.loads(item)
 
     # Deserialize json columns.
-    for column in ["subGenre", "mainMood", "subMood1", "subMood2", "about"]:
+    for column in dictcols:
         df.loc[:, column] = df.loc[:, column].map(str_to_dict)
 
     # Rename column externalId to externalid so that it is consistent with

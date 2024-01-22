@@ -1,4 +1,4 @@
-# Copyright (c) 2023, ZDF.
+# Copyright (c) 2024, ZDF.
 """
 ZDF-specific dynamic configuration to be loaded at runtime.
 """
@@ -70,6 +70,9 @@ ZDFINFO_TOPIC_CLUSTER_VARIANTS: Dict[str, Dict[str, List[str]]] = CONTENT_CONFIG
     "ZDFINFO_TOPIC_CLUSTER_VARIANTS",
     {},
 )
+
+DESCRIPTIVE_METADATA_COLUMNS: List[str] = CONTENT_CONFIGS.get("DESCRIPTIVE_METADATA_COLUMNS", [])
+DESCRIPTIVE_METADATA_DICT_COLUMNS: List[str] = CONTENT_CONFIGS.get("DESCRIPTIVE_METADATA_DICT_COLUMNS", [])
 
 
 # ##### ##### ##### ##### ##### ##### ##### ##### ##### #####

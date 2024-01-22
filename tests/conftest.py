@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2023, ZDF.
+# Copyright (c) 2024, ZDF.
 """
 Config / fixtures for all tests.
 """
