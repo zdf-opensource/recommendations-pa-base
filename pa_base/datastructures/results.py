@@ -41,7 +41,7 @@ class RecommendationSet:
     label: Optional[str] = None
     recommendableAssetsCount: Optional[str] = None
     userSegmentId: Optional[str] = None
-    reference: Optional[Dict[str, any]] = None
+    reference: Optional[Dict[str, Any]] = None
     refDocId: Optional[str] = None
 
 

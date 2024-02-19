@@ -1,20 +1,26 @@
+#  Copyright (c) 2022, ZDF.
 """Pinecone base model for generating predictions by invoking a Sagemaker Endpoint
 
 This module implements a simple model capable of invoking a Sagemaker Endpoint to retrieve predictions.
 
 (c) 2022 ZDF
 """
-#  Copyright (c) 2022, ZDF.
+
 import contextlib
 import logging
+import sys
 import urllib.parse
 from collections.abc import Collection, Iterable
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-import pinecone
-
-from pa_base.configuration.config import PINECONE_API_KEY, PINECONE_ENVIRONMENT
+from pa_base.configuration.config import PINECONE_API_KEY
 from pa_base.models.base_model import KnowsItemMixin, SimilarItemsMixin
+
+if sys.version_info < (3, 8):
+    # pinecone-client 3 requires Python 3.8+
+    raise ImportError("Pinecone requires Python 3.8+")
+else:
+    from pinecone import Pinecone
 
 if not PINECONE_API_KEY:
     # try to load from AWS Secrets Manager if PINECONE_API_KEY is not set
@@ -26,7 +32,7 @@ if not PINECONE_API_KEY:
 
         from pa_base.configuration.config import DEFAULT_REGION
 
-        pinecone_secret_name: str = os.environ.get("PINECONE_SECRET_NAME")
+        pinecone_secret_name: Optional[str] = os.environ.get("PINECONE_SECRET_NAME")
         if pinecone_secret_name is not None:
             logging.info("Retrieving pinecone API key from secret name.")
             boto_session = boto3.Session()
@@ -40,10 +46,6 @@ if not PINECONE_API_KEY:
             "I'm just a warning, not an error.",
             exc_info=exc,
         )
-
-
-pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENVIRONMENT)
-
 
 try:
     from reco.tracer import Tracer
@@ -68,51 +70,46 @@ class PineconeBaseModel(SimilarItemsMixin, KnowsItemMixin):
         index_name: str,
         namespace: str,
     ):
+        pc = Pinecone(api_key=PINECONE_API_KEY)
         # this is set only once since we have only one Pinecone Index per PineconeBaseModel
         try:
             # if index_name not in pinecone.list_indexes():
-            pinecone.describe_index(index_name)
+            pc.describe_index(index_name)
         except Exception as exc:
             # should be a pinecone.core.client.exceptions.NotFoundException or an urllib3.exceptions.MaxRetryError
             raise ValueError(f"Pinecone index '{index_name}' does not exist.") from exc
         self._index_name = index_name
         self._namespace = namespace
+        self._index = pc.Index(index_name)
 
-        self.description = f"{self.__class__.__name__} using index:namespace '{self._index_name}:{self._namespace}'"
+        self.description = f"{self.__class__.__name__} using index:namespace '{index_name}:{namespace}'"
 
     def __repr__(self):
         return f"{self.__class__.__name__} using index:namespace '{self._index_name}:{self._namespace}'"
 
     def knows_item(self, externalid: str):
-        # fetch with retries and a fresh index each time
-        max_retries = 2
-        item = self.fetch_item(externalid, max_retries=max_retries)
+        # fetch with retries
+        item = self.fetch_item(externalid)
         return len(item.vectors) > 0 if item is not None else False
 
-    def fetch_item(self, externalid: str, max_retries: int = 2):
-        # fetch item with retries and a fresh index each time
-        for i in range(1, max_retries + 1):
-            context = (
-                tracer.subsegment_context(f"pinecone-fetch-try-{i}") if tracer is not None else contextlib.nullcontext()
+    def fetch_item(self, externalid: str):
+        with tracer.subsegment_context("pinecone-fetch") if tracer is not None else contextlib.nullcontext():
+            fetch_args: Dict[str, Any] = dict(
+                ids=[
+                    # pinecone only handles ASCII ids reliably --> urlencode query id
+                    urllib.parse.quote(externalid)
+                ],
+                _request_timeout=1,
             )
-            with context:
-                fetch_args: Dict[str, str] = dict(
-                    ids=[
-                        # pinecone only handles ASCII ids reliably --> urlencode query id
-                        urllib.parse.quote(externalid)
-                    ],
+            if self._namespace:
+                fetch_args["namespace"] = self._namespace
+            try:
+                return self._index.fetch(**fetch_args)
+            except Exception as exc:
+                logging.warning(
+                    "Error during pinecone fetch",
+                    exc_info=exc,
                 )
-                if self._namespace:
-                    fetch_args["namespace"] = self._namespace
-                try:
-                    with pinecone.Index(self._index_name, pool_threads=1) as index:
-                        result = index.fetch(**fetch_args)
-                        return result
-                except Exception as exc:
-                    logging.warning(
-                        f"Error during pinecone fetch -> retry count {i} / {max_retries}",
-                        exc_info=exc,
-                    )
 
     def _get_pinecone_top_k(
         self,
@@ -121,6 +118,7 @@ class PineconeBaseModel(SimilarItemsMixin, KnowsItemMixin):
         select: Iterable[str] = (),
         n: Optional[int] = None,
         filters: Optional[Dict[str, Dict[str, Union[Collection[str], str]]]] = None,
+        max_retries: int = 2,
     ) -> List[Tuple[str, float]]:
         """get k nearest items for item id
 
@@ -134,11 +132,11 @@ class PineconeBaseModel(SimilarItemsMixin, KnowsItemMixin):
             # reasonable default value, keep None as default arg for uniformity with other "models"
             n = 250
         scores: Iterable[Tuple[str, float]] = ()
-        context = tracer.subsegment_context("pinecone-query") if tracer is not None else contextlib.nullcontext()
-        with context:
+        with tracer.subsegment_context("pinecone-query") if tracer is not None else contextlib.nullcontext():
             # query for n+1 items, because the first item is always the reference item and, thus, removed
-            query_args: Dict[str, Union[str, int, Dict[str, Collection[str]]]] = dict(
+            query_args: Dict[str, Any] = dict(
                 top_k=n + 1,
+                _request_timeout=1,
             )
             if isinstance(item, str):
                 # pinecone only handles ASCII ids reliably --> urlencode query id
@@ -151,45 +149,35 @@ class PineconeBaseModel(SimilarItemsMixin, KnowsItemMixin):
                 query_args["filter"] = filters
             if self._namespace:
                 query_args["namespace"] = self._namespace
-            # result = self.index.query(**query_args)
-            # query with retries and a fresh index each time
-            max_retries = 2
-            for i in range(1, max_retries + 1):
-                context = (
-                    tracer.subsegment_context(f"pinecone-query-try-{i}")
-                    if tracer is not None
-                    else contextlib.nullcontext()
-                )
-                with context:
-                    try:
-                        with pinecone.Index(self._index_name, pool_threads=1) as index:
-                            result = index.query(**query_args)
-                        matches = result.get("matches", [])
-                        scores = (
-                            # pinecone only handles ASCII ids reliably --> urldecode result ids
-                            (
-                                urllib.parse.unquote(match.get("id")),
-                                match.get("score", 0.0),
-                            )
-                            for match in matches[1:]
+            with tracer.subsegment_context("pinecone-query") if tracer is not None else contextlib.nullcontext():
+                try:
+                    result = self._index.query(**query_args)
+                    matches = result.get("matches", [])
+                    scores = (
+                        # pinecone only handles ASCII ids reliably --> urldecode result ids
+                        (
+                            urllib.parse.unquote(match.get("id")),
+                            match.get("score", 0.0),
                         )
-                    except Exception as exc:
-                        # probably item unknown --> 404 response is thrown as error by pinecone
+                        for match in matches[1:]
+                    )
+                except Exception as exc:
+                    # probably item unknown --> 404 response is thrown as error by pinecone
+                    if getattr(exc, "status") == 404:
+                        # item not found, break the loop
                         logging.warning(
-                            f"Error during pinecone query -> retry count {i} / {max_retries}.",
+                            "Pinecone query for unknown item",
                             exc_info=exc,
                         )
-                        if getattr(exc, "status") == 404:
-                            # item not found, break the loop
-                            break
                     else:
-                        break
-
+                        logging.warning(
+                            "Error during pinecone query",
+                            exc_info=exc,
+                        )
         if any(select):
-            scores: List[Tuple[str, float]] = [score for score in scores if score[0] in select]
+            return [score for score in scores if score[0] in select]
         else:
-            scores: List[Tuple[str, float]] = list(scores)
-        return scores
+            return list(scores)
 
     def similar_items(
         self,
