@@ -14,6 +14,7 @@ from cachetools.keys import hashkey
 
 from pa_base.datastructures.trie import Trie
 from pa_base.util import freeze
+from pa_base.zdf.configuration.config import KIKA_PARTNER_TAG, KIKA_VORSCHULE_TAG
 from pa_base.zdf.datastructures.params import BaseParams, RecommendationBaseParams
 
 
@@ -77,11 +78,16 @@ def _get_valid_items(
         if "dgs" in accessibility_options:
             conditions.append(valid_items.has_dgs)
     if tags and tags_exact_matching:
-        conditions.append(
-            ~valid_items.editorial_tags.str.split(",", expand=False).map(
-                lambda item_tags: set(item_tags).isdisjoint(tags)
+        if tags == set(KIKA_PARTNER_TAG):
+            conditions.append(valid_items.has_kika_partner_tag)
+        if tags == set(KIKA_VORSCHULE_TAG):
+            conditions.append(valid_items.has_kika_vorschule_tag)
+        else:
+            conditions.append(
+                ~valid_items.editorial_tags.str.split(",", expand=False).map(
+                    lambda item_tags: set(item_tags).isdisjoint(tags)
+                )
             )
-        )
     elif tags:
         conditions.append(
             valid_items.editorial_tags.str.contains(

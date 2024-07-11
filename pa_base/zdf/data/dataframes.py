@@ -31,6 +31,8 @@ from pa_base.data.s3_util import (
     s3_upload_file,
 )
 from pa_base.zdf.configuration.config import (
+    KIKA_PARTNER_TAG,
+    KIKA_VORSCHULE_TAG,
     ZDF_CONTENT_DUMP_BOOLCOLS,
     ZDF_CONTENT_DUMP_CATCOLS,
     ZDF_CONTENT_DUMP_COLS,
@@ -312,6 +314,14 @@ def get_content_df(
             else set()
         )
     )
+    # extent content with index columns for kika tags
+    df["has_kika_partner_tag"] = (
+        df["editorial_tags"].str.split(",", expand=False).map(lambda item_tags: KIKA_PARTNER_TAG in item_tags)
+    )
+    df["has_kika_vorschule_tag"] = (
+        df["editorial_tags"].str.split(",", expand=False).map(lambda item_tags: KIKA_VORSCHULE_TAG in item_tags)
+    )
+
     # deserialize json columns
     for column in ["zdfinfo_metadata", "search_service_tagging_results"]:
         df.loc[:, column] = df.loc[:, column].map(json.loads)

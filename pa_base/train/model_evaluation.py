@@ -4,21 +4,108 @@ Cross-validation functions and ML evaluation metrics to be used during model eva
 """
 
 import logging
-import operator
+from typing import Dict, List, Optional
 
 import mlflow
 import numpy as np
-import scipy.stats as st
 from mlflow.exceptions import MissingConfigException
 from sklearn.model_selection import KFold, train_test_split
 
 from pa_base.train.cloud_watch_metrics import CloudWatchMetrics
 
 
-class MLmetrics(CloudWatchMetrics):
-    """
-    This class computes ML metrics and logs them in logging, mlflow, and CloudWatch
-    """
+class MLmetricsCalculator:
+    """This class computes different offline evaluation metrics."""
+
+    def __init__(self, metrics: List[str], item_ids_count: Optional[Dict[int, int]] = None):
+        """Constructor.
+        : param metrics : List of offline metrics (ndcg_at_n, hit_at_n, hit_at_1, mrr, pop_q_1) to compute.
+        : param item_ids_count: Item ids and their respective value count.
+        """
+        self.metrics = metrics
+        self.item_ids_count = item_ids_count
+
+        if self.item_ids_count and "pop_q_1" not in self.metrics:
+            raise ValueError(
+                "'item_id_count' provided, but 'pop_q_1' has to be specified within the metrics to calculate 'pop_q_1'"
+            )
+
+        elif "pop_q_1" in self.metrics and not self.item_ids_count:
+            raise ValueError(
+                "'pop_q_1' specified within the metrics, please provide item_ids_count to calculate 'pop_q_1'"
+            )
+
+        elif "pop_q_1" in self.metrics and self.item_ids_count:
+            logging.info("Calculating popularity quantiles for all items ids")
+            self.each_item_id_popularity_quantile: Dict[int, int] = {
+                each_item_id: sum(
+                    1
+                    for other_item_id_occurence in self.item_ids_count.values()
+                    if other_item_id_occurence < each_occurence
+                )
+                / len(self.item_ids_count)
+                for each_item_id, each_occurence in self.item_ids_count.items()
+            }
+
+    def compute_offline_metrics(
+        self,
+        all_targets_item_ids: List[List[int]],
+        all_predictions_item_ids: List[List[int]],
+        n_for_ranking_metrics: int = 5,
+    ) -> Dict[str, int]:
+        """
+        Computes the offline metrics for all the targets and predictions given at once.
+        : param all_targets_item_ids: All targets or final item_ids for different user sequences.
+          An example [[10], [100],..[nth seq target]] - n user sequences target items within the list, where in
+          the example [10], [100] are the target item_ids for the first two test sequences.
+        : param all_predictions_item_ids : All predictions obtained from the trained model for n user sequences.
+          An examaple [[1,2,3,4,5,6], [10, 20, 30, 40], ...[nth seq predictions]]- n user sequencs predictions within the,
+          list where [1,2,3,4,5,6] represents the prediction items ids from the first user sequence and
+          [10, 20, 30, 40] represents the predicitons item ids for the second sequence.
+        : param n_for_ranking_metrics : n to consider for calculation for "ndcg_at_n" and  "hit_at_n".
+        : return: Calculation of stated metrics from ndcg_at_n, hit_at_n, hit_at_1, mrr, pop_q_1.
+          An example: Metrics argument  specified as ['ndcg_at_n', 'hit_at_n', 'pop_q_1'], with the parameter 'n_for_ranking_metrics' taken as 5.
+          final_offline_results - {"ndcg_at_5": 0.50, "hit_at_5": 0.70, 'pop_q_1':0.90}, here mrr, and hit_at_1 is not returned as it stated within metrics.
+
+        """
+
+        # Initialize array to store metric values based on targets
+        metric_results = {metric: np.zeros(len(all_targets_item_ids), dtype=np.float64) for metric in self.metrics}
+
+        for index, (target, pred) in enumerate(zip(all_targets_item_ids, all_predictions_item_ids)):
+            # Calculate pop_quantile_1 based on the first prediction for each user
+            if "pop_q_1" in self.metrics:
+                metric_results["pop_q_1"][index] = self.each_item_id_popularity_quantile.get(pred[0], 0)
+
+            # Convert predictions to a numpy array
+            pred_ids = np.array(pred)
+
+            # Find the rank of the target in the predictions
+            rank = np.where(pred_ids == target[0])[0]
+
+            # Compute the metrics based on the rank
+            if len(rank) > 0:
+                if "mrr" in self.metrics:
+                    metric_results["mrr"][index] = 1.0 / (rank + 1)
+
+                if "ndcg_at_n" in self.metrics:
+                    metric_results["ndcg_at_n"][index] = (
+                        1.0 / np.log2(rank + 2) if rank < n_for_ranking_metrics else 0.0
+                    )
+                if "hit_at_n" in self.metrics:
+                    metric_results["hit_at_n"][index] = 1.0 if rank < n_for_ranking_metrics else 0.0
+
+                if "hit_at_1" in self.metrics:
+                    metric_results["hit_at_1"][index] = 1.0 if rank == 0 else 0.0
+
+        # Compute final results
+        final_offline_results = {metric: np.mean(metric_results[metric]) for metric in self.metrics}
+
+        return final_offline_results
+
+
+class MLmetricsLogger(CloudWatchMetrics):
+    """This class is used for various logging purposes and also used for mlfow for hyper parameter tuning ."""
 
     def __init__(self, *, model_name: str, model_target: str = None, variant: str = None):
         if variant is not None:
@@ -50,65 +137,6 @@ class MLmetrics(CloudWatchMetrics):
 
     def __del__(self):
         mlflow.end_run()
-
-    def sequence_mrr_stream(self, target, predictions):
-        """Computes the MRR score for a given target and unsorted scores predicted by a model."""
-        # see spotlight.evaluation.sequence_mrr_score : https://maciejkula.github.io/spotlight/evaluation.html
-        if len(target) == 0:
-            return 0
-        scores = -np.array(list(map(operator.itemgetter(1), predictions)))
-        pred = np.array(list(map(operator.itemgetter(0), predictions)))
-        itemindex = np.where(pred == target)[0]
-        # target was not within the predictions
-        if len(itemindex) == 0:
-            return 0
-
-        mrr = 1.0 / st.rankdata(scores)[itemindex]
-        mrr = mrr.mean()
-        return mrr
-
-    def hit_rate_at_n_stream(self, target, predictions, n=10):
-        """Computes the hit rate for a given target and predictions made by a model."""
-        hit = 0
-        best_n_item_ids = list(map(operator.itemgetter(0), predictions[:n]))
-        if len(target) > 0 and target[0] in best_n_item_ids:
-            hit += 1
-        return hit
-
-    def ndcg_at_n_stream(self, target, predictions, n=10):
-        """Computes the NDCG rate for a given target and predictions made by a model."""
-        ndcg = 0
-        best_n_item_ids = np.array(list(map(operator.itemgetter(0), predictions[:n])))
-        if len(target) > 0 and target[0] in best_n_item_ids:
-            rank = np.where(best_n_item_ids == target)[0]
-            ndcg += float(1.0 / np.log2(rank + 2))
-        return ndcg
-
-    def metrics_at_n_stream(self, target, predictions, n=10):
-        """Computes the NDCG rate for a given target and predictions made by a model."""
-        ndcg = 0
-        hit = 0
-        hit_at_1 = 0
-
-        if len(target) == 0:
-            return ndcg, hit, hit_at_1, 0
-
-        scores = -np.array(list(map(operator.itemgetter(1), predictions)))
-        pred = np.array(list(map(operator.itemgetter(0), predictions)))
-        rank = np.where(pred == target)[0]
-        # target was not within the predictions
-        if len(rank) == 0:
-            return ndcg, hit, hit_at_1, 0
-
-        mrr = 1.0 / st.rankdata(scores)[rank]
-        mrr = mrr.mean()
-
-        if rank[0] < n:
-            ndcg += float(1.0 / np.log2(rank + 2))
-            hit += 1
-            if rank == 0:
-                hit_at_1 += 1
-        return ndcg, hit, hit_at_1, mrr
 
     def log_metric(self, prefix, metric_name, value, step=None, log_cloud_watch=False):
         """Logs a metric both through logging and into mlflow metrics."""

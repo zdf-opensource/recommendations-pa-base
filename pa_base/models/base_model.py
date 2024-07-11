@@ -6,7 +6,7 @@ This module implements a simple model capable of generating scored predictions.
 import logging
 import pickle
 from abc import ABC, abstractmethod
-from typing import BinaryIO, Iterable, List, Tuple, TypeVar
+from typing import BinaryIO, Iterable, List, Tuple, TypeVar, Union
 
 import numpy as np
 
@@ -169,3 +169,22 @@ def normalize_scores(scores: Iterable[Tuple[T, float]]) -> List[Tuple[T, float]]
         values = np.ones_like(values)
     # transform two lists (ids and scores) back into one list of (id,score)-tuples
     return list(zip(extids, values.tolist()))
+
+
+def normalize_scores_batches(
+    scores: Union[Iterable[Tuple[T, float]], List[Iterable[Tuple[T, float]]]]
+) -> Union[List[Tuple[T, float]], List[Iterable[Tuple[T, float]]]]:
+    """
+     Normalize scores for given batch of scores or single user score
+
+    :param scores: Batch of multiple (itemid, score) or single user score.
+    :returns: list of (itemid, score) tuples with normalized scores or list of such lists.
+    """
+
+    first_element = next(iter(scores), None)
+    if isinstance(first_element, list):
+        # If the first element is a list, we have a list of batch of scores
+        return [normalize_scores(sublist) for sublist in scores]
+    else:
+        # Otherwise, we have a single iterable of tuples for one user
+        return normalize_scores(scores)

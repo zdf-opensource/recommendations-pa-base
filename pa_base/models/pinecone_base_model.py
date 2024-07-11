@@ -1,5 +1,6 @@
 #  Copyright (c) 2022, ZDF.
-"""Pinecone base model for generating predictions by invoking a Sagemaker Endpoint
+"""
+Pinecone base model for generating predictions by invoking a Sagemaker Endpoint
 
 This module implements a simple model capable of invoking a Sagemaker Endpoint to retrieve predictions.
 
@@ -13,7 +14,7 @@ import urllib.parse
 from collections.abc import Collection, Iterable
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from pa_base.configuration.config import PINECONE_API_KEY
+from pa_base.configuration.config import PINECONE_API_KEY, PINECONE_TIMEOUT_SECONDS
 from pa_base.models.base_model import KnowsItemMixin, SimilarItemsMixin
 
 if sys.version_info < (3, 8):
@@ -57,11 +58,13 @@ except ImportError:
 
 
 class PineconeBaseModel(SimilarItemsMixin, KnowsItemMixin):
-    """Simple Pinecone base model class
+    """
+    Simple Pinecone base model class
 
     A PineconeBaseModel can invoke a Pinecone index to retrieve scored similar items for a given reference item.
 
-    :param index_name: A string providing a description of the model generation.
+    :param index_name: name of the Pinecone index
+    :param namespace: (optional) namespace within the Pinecone index
     """
 
     def __init__(
@@ -81,6 +84,8 @@ class PineconeBaseModel(SimilarItemsMixin, KnowsItemMixin):
         self._index_name = index_name
         self._namespace = namespace
         self._index = pc.Index(index_name)
+        # timeout in (fraction of) seconds or tuple of (connect, read) timeouts
+        self._timeout_seconds: Union[int, float, Tuple[Union[int, float], Union[int, float]]] = PINECONE_TIMEOUT_SECONDS
 
         self.description = f"{self.__class__.__name__} using index:namespace '{index_name}:{namespace}'"
 
@@ -99,7 +104,7 @@ class PineconeBaseModel(SimilarItemsMixin, KnowsItemMixin):
                     # pinecone only handles ASCII ids reliably --> urlencode query id
                     urllib.parse.quote(externalid)
                 ],
-                _request_timeout=1,
+                _request_timeout=self._timeout_seconds,
             )
             if self._namespace:
                 fetch_args["namespace"] = self._namespace
@@ -118,9 +123,9 @@ class PineconeBaseModel(SimilarItemsMixin, KnowsItemMixin):
         select: Iterable[str] = (),
         n: Optional[int] = None,
         filters: Optional[Dict[str, Dict[str, Union[Collection[str], str]]]] = None,
-        max_retries: int = 2,
     ) -> List[Tuple[str, float]]:
-        """get k nearest items for item id
+        """
+        get k nearest items for item id
 
         :param item: externalid of reference item OR a vector (list of floats) in the latent embedding space
         :param select: allowed items' externalids
@@ -136,7 +141,7 @@ class PineconeBaseModel(SimilarItemsMixin, KnowsItemMixin):
             # query for n+1 items, because the first item is always the reference item and, thus, removed
             query_args: Dict[str, Any] = dict(
                 top_k=n + 1,
-                _request_timeout=1,
+                _request_timeout=self._timeout_seconds,
             )
             if isinstance(item, str):
                 # pinecone only handles ASCII ids reliably --> urlencode query id
@@ -163,7 +168,7 @@ class PineconeBaseModel(SimilarItemsMixin, KnowsItemMixin):
                     )
                 except Exception as exc:
                     # probably item unknown --> 404 response is thrown as error by pinecone
-                    if getattr(exc, "status") == 404:
+                    if getattr(exc, "status", None) == 404:
                         # item not found, break the loop
                         logging.warning(
                             "Pinecone query for unknown item",
@@ -188,7 +193,8 @@ class PineconeBaseModel(SimilarItemsMixin, KnowsItemMixin):
         scale: bool = False,
         **kwargs,
     ) -> List[Tuple[str, float]]:
-        """get similar items for item
+        """
+        get similar items for item
 
         :param item: externalid of reference item
         :param select: allowed items' externalids

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pa_base"
-version = "2.0.0"
+version = "3.0.0"
 description = "Base models, logic, and, abstractions for P/A components. (c) ZDF, 2024. All rights reserved."
 license = "MIT" # c.f., https://python-poetry.org/docs/pyproject/#license
 authors = [
@@ -61,6 +61,7 @@ pinecone-client = [
     # { version = "2.2.0", python = ">=3.6.1,<3.8", optional = true },
     { version = "^3.0.3", python = ">=3.8,<3.13", optional = true },
 ]
+mlflow = { version = "^2.8.0", python = "^3.8"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "~7.0"

@@ -146,6 +146,7 @@ if not PINECONE_API_KEY:
         "Could not load Pinecone API key, expected as environment variable PINECONE_API_KEY! "
         "Resuming without the possibility to use pinecone. I'm just a warning, not an error."
     )
+PINECONE_TIMEOUT_SECONDS: float = float(os.environ.get("PINECONE_TIMEOUT_SECONDS", 1.0))
 
 
 # Xayn API KEY

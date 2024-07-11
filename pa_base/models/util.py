@@ -40,21 +40,3 @@ def combine_decayed(*multiple_scores: Iterable[Tuple[str, float]]) -> List[Tuple
         for externalid, score in scores:
             result[externalid] += decay * score
     return sorted(result.items(), key=itemgetter(1), reverse=True)
-
-
-def get_model_target(*args, **kwargs):
-    """
-    stub for backwards compatibility
-    """
-    raise RuntimeError(
-        "pa_base.models.util.get_model_target has been removed, use pa_base.zdf.models.util.get_model_target for ZDF-specific utils instead. If you're using this in tenant code, please inform ZDF."
-    )
-
-
-def SPECIAL_UA():
-    """
-    stub for backwards compatibility
-    """
-    raise RuntimeError(
-        "pa_base.models.util.SPECIAL_UA has been removed, use pa_base.zdf.models.util.SPECIAL_UA for ZDF-specific utils instead. If you're using this in tenant code, please inform ZDF."
-    )

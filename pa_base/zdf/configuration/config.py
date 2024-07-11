@@ -97,3 +97,5 @@ ZDF_CONTENT_DUMP_CATCOLS: t.List[str] = [
 ZDF_CONTENT_DUMP_INTCOLS: t.List[str] = ["episode_number", "season_number"]
 ZDF_CONTENT_DUMP_STRCOLS: t.List[str] = ["editorial_tags", "pharos_ids"]
 ZDF_CONTENT_DUMP_BOOLCOLS: t.List[str] = ["load_recommendations"]
+KIKA_PARTNER_TAG = "Partner_kika#Kika"
+KIKA_VORSCHULE_TAG = "vorschule#Kika"

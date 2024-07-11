@@ -8,6 +8,7 @@ import pytest
 from pytest_mock import MockFixture
 from utils import redis_delete_all_keys
 
+from pa_base.configuration.config import WITHOUT_REDIS_MODELS
 from pa_base.zdf.models.redis_models import (
     SEGMENTS_SCORES_REDIS,
     EventsModelSuffix,
@@ -16,6 +17,10 @@ from pa_base.zdf.models.redis_models import (
     StageModelSuffix,
 )
 from pa_base.zdf.train.user_segmentation import GenreSegmentsEnum
+
+if WITHOUT_REDIS_MODELS:
+    print("Running without redis models - not testing Redis models.")
+    pytest.skip("Skipping tests for now", allow_module_level=True)
 
 
 @pytest.fixture

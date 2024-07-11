@@ -8,7 +8,11 @@ import pytest
 import redis
 from utils import redis_delete_all_keys
 
-from pa_base.configuration.config import REDISMODEL_HOST, REDISMODEL_PORT
+from pa_base.configuration.config import (
+    REDISMODEL_HOST,
+    REDISMODEL_PORT,
+    WITHOUT_REDIS_MODELS,
+)
 from pa_base.zdf.models.redis_models import (
     EVENTS_SCORES_REDIS,
     SEGMENTS_SCORES_REDIS,
@@ -35,11 +39,16 @@ class TestSetupError(Exception):
 
 def pytest_sessionstart():
     print("Starting test session")
-    try:
-        r = redis.Redis(host=REDISMODEL_HOST, port=REDISMODEL_PORT)
-        assert r.ping() is True
-    except redis.exceptions.ConnectionError:
-        raise TestSetupError(f"No Redis server running on 'host={REDISMODEL_HOST}, port={REDISMODEL_PORT}'.")
+    if WITHOUT_REDIS_MODELS:
+        print("Running without redis models")
+    elif not REDISMODEL_HOST or not REDISMODEL_PORT:
+        raise TestSetupError("REDISMODEL_HOST or REDISMODEL_PORT not set.")
+    else:
+        try:
+            r = redis.Redis(host=REDISMODEL_HOST, port=REDISMODEL_PORT)
+            assert r.ping() is True
+        except redis.exceptions.ConnectionError:
+            raise TestSetupError(f"No Redis server running on 'host={REDISMODEL_HOST}, port={REDISMODEL_PORT}'.")
 
 
 @pytest.fixture
